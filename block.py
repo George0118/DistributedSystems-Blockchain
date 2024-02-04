@@ -2,6 +2,7 @@
 
 import time
 from blockchain_utils import BlockChainUtils
+from blockchain import Blockchain
 
 
 class Block:

@@ -1,7 +1,5 @@
 """Transaction class to represent a transaction in the blockchain."""
 
-import time
-from wallet import Wallet
 from blockchain_utils import BlockChainUtils
 
 
@@ -25,7 +23,6 @@ class Transaction:
         self.message = message
         self.type_of_transaction = type_of_transaction  # Can be 'coins' or 'message'
         self.nonce = nonce
-        self.timestamp = time.time()
         self.transaction_id = self.calculate_transaction_id()
         self.signature = ""
 
@@ -40,7 +37,6 @@ class Transaction:
             "message": self.message,
             "type_of_transaction": self.type_of_transaction,
             "nonce": self.nonce,
-            "timestamp": self.timestamp,
         }
         return BlockChainUtils.hash(transaction_dict).hexdigest()
 
@@ -48,10 +44,7 @@ class Transaction:
         """
         Check if two transactions are equal.
         """
-        if self.transaction_id == transaction.transaction_id:
-            return True
-        else:
-            return False
+        return self.transaction_id == transaction.transaction_id
 
     def to_dict(self):
         """
@@ -64,7 +57,6 @@ class Transaction:
             "message": self.message,
             "type_of_transaction": self.type_of_transaction,
             "nonce": self.nonce,
-            "timestamp": self.timestamp,
             "transaction_id": self.transaction_id,
             "signature": self.signature,
         }
@@ -80,33 +72,11 @@ class Transaction:
             "message": self.message,
             "type_of_transaction": self.type_of_transaction,
             "nonce": self.nonce,
-            "timestamp": self.timestamp,
             "transaction_id": self.transaction_id,
         }
 
-    def sign_transaction(self, wallet):
+    def sign_transaction(self, signature):
         """
         Sign the transaction with a wallet's private key.
         """
-        self.signature = wallet.sign_transaction(self.payload())
-
-    @staticmethod
-    def verify_transaction_signature(transaction, signature, sender_public_key):
-        """
-        Verify the transaction's signature.
-        """
-        return Wallet.verify_transaction(
-            transaction.payload(), signature, sender_public_key
-        )
-
-    def is_valid(self):
-        """
-        Validates the transaction data.
-        """
-        # Check for a valid signature
-        if not self.signature or not Transaction.verify_transaction_signature(
-            self, self.signature, self.sender_address
-        ):
-            return False
-        # Additional validation checks can be implemented here
-        return True
+        self.signature = signature

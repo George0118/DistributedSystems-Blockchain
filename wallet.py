@@ -1,5 +1,6 @@
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
+from block import Block
 from blockchain_utils import BlockChainUtils
 from transaction import Transaction
 
@@ -36,7 +37,7 @@ class Wallet:
         return signature.hex()
 
     @staticmethod
-    def verify_transaction(transaction, signature, sender_public_key):
+    def verify_signature(transaction, signature, sender_public_key):
         """
         Verify the signature of a transaction.
         """
@@ -58,8 +59,20 @@ class Wallet:
             "public_key": self.public_key.decode("utf-8"),
         }
 
+    def create_block(self, transactions, previous_hash, index):
+        """
+        Create a block.
+        """
+        block = Block(
+            transactions=transactions,
+            previous_hash=previous_hash,
+            validator=self.public_key.decode("utf-8"),
+            index=index,
+        )
+        return block
+
     def create_transaction(
-        self, receiver_address, amount, message="", type_of_transaction="coins"
+        self, receiver_address, amount, message, type_of_transaction
     ):
         """
         Create a transaction.
@@ -72,5 +85,7 @@ class Wallet:
             message=message,
             type_of_transaction=type_of_transaction,
         )
-        transaction.sign_transaction(self)
+        self.nonce += 1
+        signature = self.sign_transaction(transaction)
+        transaction.signature = signature
         return transaction
