@@ -2,12 +2,12 @@
 
 import time
 from blockchain_utils import BlockChainUtils
-from blockchain import Blockchain
+from config import CAPACITY
 
 
 class Block:
     """
-    For creating and managing blocks - a container that holds data (including transactions)\
+    For creating and managing blocks - a container that holds data (including transactions)
     """
 
     def __init__(self, transactions, previous_hash, validator, index):
@@ -25,7 +25,7 @@ class Block:
         """
         genesis_block = Block(
             transactions=[], previous_hash="1", validator="0", index=0
-        )  # There are no transactions
+        )  # The first transaction will be made in the blockchain class
         genesis_block.timestamp = 0  # This means the timestamp of the genesis block is
         # constant
         return genesis_block
@@ -66,3 +66,16 @@ class Block:
             json_transactions.append(transaction.to_dict())
         data["transactions"] = json_transactions
         return data
+
+    def is_full(self):
+        """
+        Checks if the block is full
+        """
+        return len(self.transactions) >= CAPACITY
+
+    def sum_fees(self):
+        """
+        Sums the fees of all transactions in the block
+        """
+        fees = [transaction.fee for transaction in self.transactions]
+        return sum(fees)

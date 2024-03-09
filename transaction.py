@@ -15,20 +15,25 @@ class Transaction:
         amount,
         nonce,
         message="",
-        type_of_transaction="coins",
+        type_of_transaction="DEFAULT",
     ):
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.amount = amount
         self.message = message
-        self.type_of_transaction = type_of_transaction  # Can be 'coins' or 'message'
+        self.type_of_transaction = (
+            type_of_transaction  # Can be 'DEFAULT' or 'STAKE' or 'EXCHANGE
+        )
         self.nonce = nonce
         self.transaction_id = self.calculate_transaction_id()
-        self.signature = ""
+        self.signature = None
+        self.fee = (
+            0.03 * amount + len(message) if type_of_transaction == "DEFAULT" else 0
+        )
 
     def calculate_transaction_id(self):
         """
-        Calculate the transaction ID.
+        Calculate the transaction ID (to_dict without signature and id).
         """
         transaction_dict = {
             "sender_address": self.sender_address,
@@ -40,11 +45,19 @@ class Transaction:
         }
         return BlockChainUtils.hash(transaction_dict).hexdigest()
 
-    def equals(self, transaction):
+    def payload(self):
         """
-        Check if two transactions are equal.
+        Generate the payload for the transaction (to_dict without signature).
         """
-        return self.transaction_id == transaction.transaction_id
+        return {
+            "sender_address": self.sender_address,
+            "receiver_address": self.receiver_address,
+            "amount": self.amount,
+            "message": self.message,
+            "type_of_transaction": self.type_of_transaction,
+            "nonce": self.nonce,
+            "transaction_id": self.transaction_id,
+        }
 
     def to_dict(self):
         """
@@ -61,19 +74,11 @@ class Transaction:
             "signature": self.signature,
         }
 
-    def payload(self):
+    def equals(self, transaction):
         """
-        Generate the payload for the transaction.
+        Check if two transactions are equal.
         """
-        return {
-            "sender_address": self.sender_address,
-            "receiver_address": self.receiver_address,
-            "amount": self.amount,
-            "message": self.message,
-            "type_of_transaction": self.type_of_transaction,
-            "nonce": self.nonce,
-            "transaction_id": self.transaction_id,
-        }
+        return self.transaction_id == transaction.transaction_id
 
     def sign_transaction(self, signature):
         """

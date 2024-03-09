@@ -13,12 +13,10 @@ class BlockChainUtils:
     @staticmethod
     def hash(data):
         """
-        Creates a hash of data using  the SHA-256 hash algorithm
+        Creates a hash of data using the SHA-256 hash algorithm.
         """
         data_string = json.dumps(data)  # Takes data and makes it into string form
-        data_bytes = data_string.encode(
-            "utf-8"
-        )  # Converts string to binary representation
+        data_bytes = data_string.encode("utf-8")  # Encodes data into bytes
         data_hash = SHA256.new(data_bytes)  # Hashes data
         return data_hash
 

@@ -5,21 +5,42 @@ from blockchain_utils import BlockChainUtils
 from account_model import AccountModel
 from proof_of_stake import ProofOfStake
 
+from transaction import Transaction
+from wallet import Wallet
+from config import NUMBER_OF_USERS
+
 
 class Blockchain:
     """For creating and managing a linked list of chain"""
 
     def __init__(self):
         self.chain = [Block.genesis()]
-        self.capacity = 5
         self.account_model = (
             AccountModel()
         )  # Blockchain is aware of all of the accounts
         self.pos = ProofOfStake()
+        self.chain[0].transactions.append(self.create_genesis_transaction())
+
+    def create_genesis_transaction(self):
+        """Creates the genesis transaction"""
+        bootstrap_node_public_key = AccountModel.get_bootstrap_public_key(
+            self.account_model
+        )
+        genesis_transaction = Transaction(
+            sender_address="0",
+            receiver_address=bootstrap_node_public_key,
+            amount=1000 * NUMBER_OF_USERS,
+            nonce=0,
+            message="",
+            type_of_transaction="EXCHANGE",
+        )
+        return genesis_transaction
 
     def add_block(self, block):
         """Adds a block to the blockchain and executes the transactions in the block"""
         self.execute_transactions(block.transactions)
+        total_fees = block.total_fees()
+        self.account_model.update_balance(block.validator, total_fees)
         self.chain.append(block)
 
     def to_dict(self):
@@ -54,9 +75,9 @@ class Blockchain:
                 print("transaction is not covered by sender")
         return covered_transactions
 
-    def transaction_covered(self, transaction):
-        """Checks if a user has enough funds to perform a transaction"""
-        if transaction.type == "EXCHANGE":
+    def transaction_covered(self, transaction: Transaction):
+        """Checks if a transaction is covered by the sender's funds"""
+        if transaction.type_of_transaction == "EXCHANGE":
             return (
                 True  # If a transaction is an exchange transaction it is always covered
             )
@@ -64,25 +85,26 @@ class Blockchain:
         if len(transaction.message) == 0 and transaction.amount == 0:
             print("Invalid transaction")
             return False
-        if len(transaction.message) == 0:
-            # If there is no message, then it is a regular transaction with 3% fee
-            return sender_balance >= transaction.amount * 1.03
-        # Lastly, if there is a message (and perhaps an amount too) then the balance must be
-        # greater than the sum of the message length and the amount * 1.03
-        return sender_balance >= len(transaction.message) + transaction.amount * 1.03
+        if transaction.type_of_transaction == "DEFAULT":
+            fee = sender_balance >= len(transaction.message) + transaction.amount * 1.03
+            return (
+                sender_balance >= len(transaction.message) + transaction.amount * 1.03
+                and fee != 0
+            )
+        return False
 
     def execute_transactions(self, transactions):
         """Will execute each transaction in a list of transactions"""
         for transaction in transactions:
             self.execute_transaction(transaction)
 
-    def execute_transaction(self, transaction):
+    def execute_transaction(self, transaction: Transaction):
         """Will execute a transaction"""
         sender = transaction.sender_address
         receiver = transaction.receiver_address
-        if transaction.type == "STAKE":
-            if sender == receiver:  # For the transaction to actually be of type stake,
-                # the sender and receiver public keys must be the same
+        if transaction.type_of_transaction == "STAKE":
+            if receiver == 0:  # For the transaction to actually be of type stake,
+                # the receiver public key must be 0
                 amount = transaction.amount
                 self.pos.update(sender, amount)  # The stake is added
                 self.account_model.update_balance(sender, -amount)
@@ -116,7 +138,7 @@ class Blockchain:
         next_validator = self.pos.validator(last_block_hash)
         return next_validator
 
-    def create_block(self, transactions_from_pool, validator_wallet):
+    def create_block(self, transactions_from_pool, validator_wallet: Wallet):
         """Creates a new block"""
         covered_transactions = self.get_covered_transaction_set(
             transactions_from_pool
@@ -130,7 +152,7 @@ class Blockchain:
         self.chain.append(new_block)  # Adds new block to blockchain
         return new_block  # Block is returned so that it can be broadcast
 
-    def transaction_exists(self, transaction):
+    def transaction_exists(self, transaction: Transaction):
         """Checks if transaction is already in blockchain"""
         for block in self.chain:  # Iterate through all chain
             for block_transaction in block.transactions:  # Iterate in block
@@ -138,14 +160,11 @@ class Blockchain:
                     return True  # The transaction already exists in the blockchain
         return False
 
-    def validator_valid(self, block):
+    def validator_valid(self, block: Block):
         """Checks if validator is actually valid"""
         validator_public_key = self.pos.validator(block.previous_hash)
         proposed_block_validator = block.validator
-        if validator_public_key == proposed_block_validator:
-            return True
-        else:
-            return False
+        return validator_public_key == proposed_block_validator
 
     def transactions_valid(self, transactions):
         """Checks if transactions are actually valid"""
